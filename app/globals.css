@@ -1,26 +1,101 @@
 @import "tailwindcss";
+@import "mapbox-gl/dist/mapbox-gl.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #081018;
+  --bg-soft: #10243a;
+  --card: rgba(11, 27, 44, 0.64);
+  --line: rgba(184, 219, 255, 0.18);
+  --text: #ebf6ff;
+  --muted: #a2c4e0;
+  --accent: #2dd4bf;
+  --accent-2: #38bdf8;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-display), "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(1200px 620px at 12% -12%, #1e3a8a66 0%, #00000000 55%),
+    radial-gradient(900px 520px at 88% -8%, #14b8a655 0%, #00000000 50%),
+    linear-gradient(150deg, #05101f 0%, #081828 42%, #0b1f31 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-glass {
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    180deg,
+    rgba(20, 39, 60, 0.82) 0%,
+    rgba(8, 19, 32, 0.72) 100%
+  );
+  backdrop-filter: blur(8px);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.fade-up {
+  animation: fadeUp 460ms ease-out both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pulse-dot {
+  animation: pulseDot 1.9s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+.mapboxgl-popup-content {
+  background: #0f253a;
+  color: #eef9ff;
+  border: 1px solid #355c7f;
+  border-radius: 12px;
 }
