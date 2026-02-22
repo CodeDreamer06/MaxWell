@@ -2,6 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  HospitalIcon,
+  LocationIcon,
+  SearchIcon,
+  SpinnerIcon,
+} from "@/components/ui-icons";
 import type { HospitalResult } from "@/lib/types";
 
 const HospitalMap = dynamic(
@@ -10,7 +16,8 @@ const HospitalMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[440px] items-center justify-center rounded-2xl border border-dashed border-white/25 text-sm text-cyan-50/70">
+      <div className="flex h-[440px] items-center justify-center gap-2 rounded-2xl border border-dashed border-white/25 text-sm text-cyan-50/70">
+        <SpinnerIcon className="h-4 w-4" />
         Loading map...
       </div>
     ),
@@ -151,11 +158,16 @@ export function HospitalsPanel() {
     }
     return `${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)}`;
   }, [center]);
+  const detectingGeo =
+    geoStatus.includes("Detecting") || geoStatus.includes("Attempting");
 
   return (
     <section className="space-y-4">
       <header className="card-glass rounded-3xl p-6">
-        <h1 className="text-2xl font-semibold">Nearby Hospitals & Clinics</h1>
+        <h1 className="inline-flex items-center gap-2 text-2xl font-semibold">
+          <HospitalIcon className="h-6 w-6 text-cyan-200" />
+          Nearby Hospitals & Clinics
+        </h1>
         <p className="mt-2 text-sm text-cyan-50/75">
           Search by town/village or use your current location. MaxWell shows
           nearest facilities with distance and direction links.
@@ -165,30 +177,47 @@ export function HospitalsPanel() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Enter location"
-            className="min-w-[240px] flex-1 rounded-xl border border-white/20 bg-slate-950/55 px-3 py-2 text-sm"
+            className="min-w-[240px] flex-1 rounded-xl surface-input px-3 py-2 text-sm soft-focus-ring"
           />
           <button
             type="button"
             onClick={() => searchByQuery(query || "district hospital")}
-            className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950"
+            className="micro-lift inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 soft-focus-ring"
           >
+            {loading ? (
+              <SpinnerIcon className="h-4 w-4" />
+            ) : (
+              <SearchIcon className="h-4 w-4" />
+            )}
             Search
           </button>
           <button
             type="button"
             onClick={useMyLocation}
-            className="rounded-full border border-cyan-200/45 px-4 py-2 text-sm"
+            disabled={detectingGeo}
+            className="micro-lift inline-flex items-center gap-1.5 rounded-full border border-cyan-200/45 px-4 py-2 text-sm soft-focus-ring disabled:opacity-70"
           >
+            {detectingGeo ? (
+              <SpinnerIcon className="h-4 w-4" />
+            ) : (
+              <LocationIcon className="h-4 w-4" />
+            )}
             Use my location
           </button>
         </div>
         {geoStatus && (
-          <p className="mt-2 text-xs text-cyan-100/80">{geoStatus}</p>
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-cyan-100/80">
+            {detectingGeo && <span className="tiny-spinner h-3 w-3" />}
+            {geoStatus}
+          </p>
         )}
       </header>
 
       {loading && (
-        <p className="text-sm text-cyan-50/70">Loading hospitals...</p>
+        <p className="inline-flex items-center gap-1.5 text-sm text-cyan-50/70">
+          <SpinnerIcon className="h-4 w-4" />
+          Loading hospitals...
+        </p>
       )}
       {error && (
         <p className="rounded-xl border border-red-200/35 bg-red-950/35 p-3 text-sm text-red-100">
@@ -215,7 +244,7 @@ export function HospitalsPanel() {
             {hospitals.map((hospital) => (
               <article
                 key={hospital.id}
-                className="rounded-2xl border border-white/15 bg-slate-950/40 p-3"
+                className="micro-lift rounded-2xl border border-white/15 bg-slate-950/40 p-3"
               >
                 <h3 className="text-sm font-semibold">{hospital.name}</h3>
                 <p className="mt-1 text-xs text-cyan-50/70">
@@ -228,14 +257,14 @@ export function HospitalsPanel() {
                   {hospital.phone ? (
                     <a
                       href={`tel:${hospital.phone}`}
-                      className="rounded-full border border-cyan-200/35 px-3 py-1"
+                      className="micro-lift rounded-full border border-cyan-200/35 px-3 py-1 soft-focus-ring"
                     >
                       Call
                     </a>
                   ) : (
                     <a
                       href="tel:108"
-                      className="rounded-full border border-orange-200/35 px-3 py-1"
+                      className="micro-lift rounded-full border border-orange-200/35 px-3 py-1 soft-focus-ring"
                     >
                       Call health support
                     </a>
@@ -244,7 +273,7 @@ export function HospitalsPanel() {
                     href={`https://www.google.com/maps/dir/?api=1&destination=${hospital.latitude},${hospital.longitude}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-emerald-200/35 px-3 py-1"
+                    className="micro-lift rounded-full border border-emerald-200/35 px-3 py-1 soft-focus-ring"
                   >
                     Get directions
                   </a>
@@ -253,7 +282,7 @@ export function HospitalsPanel() {
                       href={hospital.website}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-full border border-blue-200/35 px-3 py-1"
+                      className="micro-lift rounded-full border border-blue-200/35 px-3 py-1 soft-focus-ring"
                     >
                       Website
                     </a>

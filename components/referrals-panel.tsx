@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ReferralPdfButton } from "@/components/referral-pdf-button";
 import { TriageBadge } from "@/components/triage-badge";
+import { ClockIcon, ReferralIcon, SpinnerIcon } from "@/components/ui-icons";
 import type { ReferralNote } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
 
@@ -95,7 +96,10 @@ export function ReferralsPanel() {
       <header className="card-glass rounded-3xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">Referral Notes</h1>
+            <h1 className="inline-flex items-center gap-2 text-2xl font-semibold">
+              <ReferralIcon className="h-6 w-6 text-cyan-200" />
+              Referral Notes
+            </h1>
             <p className="mt-1 text-sm text-cyan-50/70">
               Generate doctor-ready notes from intake + chat context and export
               as PDF.
@@ -105,8 +109,9 @@ export function ReferralsPanel() {
             type="button"
             disabled={generating}
             onClick={generateReferral}
-            className="rounded-full bg-emerald-300 px-5 py-2 text-sm font-semibold text-slate-950 disabled:opacity-70"
+            className="micro-lift inline-flex items-center gap-1.5 rounded-full bg-emerald-300 px-5 py-2 text-sm font-semibold text-slate-950 soft-focus-ring disabled:opacity-70"
           >
+            {generating && <SpinnerIcon className="h-4 w-4" />}
             {generating ? "Generating..." : "Generate referral"}
           </button>
         </div>
@@ -122,7 +127,10 @@ export function ReferralsPanel() {
         <aside className="card-glass rounded-3xl p-3">
           <h2 className="mb-2 px-2 text-sm font-semibold">Saved notes</h2>
           {loading ? (
-            <p className="px-2 text-sm text-cyan-50/70">Loading...</p>
+            <p className="inline-flex items-center gap-1.5 px-2 text-sm text-cyan-50/70">
+              <SpinnerIcon className="h-4 w-4" />
+              Loading...
+            </p>
           ) : rows.length === 0 ? (
             <p className="px-2 text-sm text-cyan-50/70">No referrals yet.</p>
           ) : (
@@ -132,9 +140,10 @@ export function ReferralsPanel() {
                   key={row.id}
                   type="button"
                   onClick={() => setSelectedId(row.id)}
-                  className={`w-full rounded-2xl border p-3 text-left ${selectedId === row.id ? "border-cyan-200/50 bg-cyan-200/10" : "border-white/15 bg-slate-950/40"}`}
+                  className={`micro-lift w-full rounded-2xl border p-3 text-left soft-focus-ring ${selectedId === row.id ? "border-cyan-200/50 bg-cyan-200/10" : "border-white/15 bg-slate-950/40"}`}
                 >
-                  <p className="text-xs text-cyan-50/75">
+                  <p className="inline-flex items-center gap-1 text-xs text-cyan-50/75">
+                    <ClockIcon className="h-3.5 w-3.5" />
                     {formatDateTime(row.createdAt)}
                   </p>
                   <p className="mt-1 text-sm">{row.note.recommendedUrgency}</p>
@@ -151,8 +160,12 @@ export function ReferralsPanel() {
             <article className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold">Referral Note</h2>
-                  <p className="text-xs text-cyan-50/70">
+                  <h2 className="inline-flex items-center gap-1.5 text-xl font-semibold">
+                    <ReferralIcon className="h-5 w-5 text-cyan-200" />
+                    Referral Note
+                  </h2>
+                  <p className="inline-flex items-center gap-1 text-xs text-cyan-50/70">
+                    <ClockIcon className="h-3.5 w-3.5" />
                     Generated {formatDateTime(selected.note.generatedAt)}
                   </p>
                 </div>
@@ -166,7 +179,7 @@ export function ReferralsPanel() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
+                <div className="micro-lift rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
                   <p>
                     <strong>Age:</strong>{" "}
                     {selected.note.patientBasics.age ?? "Unknown"}
@@ -180,7 +193,7 @@ export function ReferralsPanel() {
                     {selected.note.patientBasics.location}
                   </p>
                 </div>
-                <div className="rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
+                <div className="micro-lift rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
                   <p>
                     <strong>Urgency:</strong> {selected.note.recommendedUrgency}
                   </p>
@@ -191,7 +204,7 @@ export function ReferralsPanel() {
                 </div>
               </div>
 
-              <section className="rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
+              <section className="micro-lift rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
                 <h3 className="mb-1 text-sm font-semibold">
                   Symptoms timeline
                 </h3>
@@ -200,7 +213,7 @@ export function ReferralsPanel() {
                 </p>
               </section>
 
-              <section className="rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
+              <section className="micro-lift rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
                 <h3 className="mb-2 text-sm font-semibold">
                   Suspected conditions
                 </h3>
@@ -214,7 +227,7 @@ export function ReferralsPanel() {
                 </ul>
               </section>
 
-              <section className="rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
+              <section className="micro-lift rounded-xl border border-white/15 bg-slate-950/40 p-3 text-sm">
                 <h3 className="mb-2 text-sm font-semibold">
                   Doctor handoff summary
                 </h3>

@@ -5,6 +5,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
 import { TriageBadge } from "@/components/triage-badge";
 import {
+  AlertIcon,
+  ChatIcon,
+  CheckIcon,
+  HospitalIcon,
+  IntakeIcon,
+  LocationIcon,
+  RefreshIcon,
+  SparklesIcon,
+  SpinnerIcon,
+} from "@/components/ui-icons";
+import {
   DEMO_INTAKE_TEMPLATE,
   RED_FLAG_OPTIONS,
   TRIAGE_META,
@@ -169,6 +180,11 @@ export function IntakeWizard() {
       ["Basics", "Symptoms", "Red Flags", "History + Vitals", "Review"][step],
     [step],
   );
+  const detectingLocation =
+    locationStatus.includes("Detecting") ||
+    locationStatus.includes("Attempting");
+  const inputClass =
+    "mt-1 w-full rounded-xl surface-input px-3 py-2 soft-focus-ring";
 
   const applyCoordinates = useCallback(
     async (
@@ -397,11 +413,12 @@ export function IntakeWizard() {
     return (
       <section className="space-y-6">
         <div
-          className={`card-glass rounded-3xl border p-6 ring-1 ${meta.ring} bg-gradient-to-br ${meta.panel}`}
+          className={`card-glass fade-up rounded-3xl border p-6 ring-1 ${meta.ring} bg-gradient-to-br ${meta.panel}`}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <TriageBadge level={triage.triageLevel} />
-            <p className="text-sm text-cyan-50/70">
+            <p className="inline-flex items-center gap-1.5 text-sm text-cyan-50/70">
+              <CheckIcon className="h-3.5 w-3.5 text-emerald-200" />
               Confidence: {(triage.confidence * 100).toFixed(0)}%
             </p>
           </div>
@@ -409,7 +426,7 @@ export function IntakeWizard() {
           <p className="mt-2 text-cyan-50/80">{triage.whyThisTriage}</p>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            <article className="rounded-xl border border-white/15 bg-slate-950/35 p-4">
+            <article className="micro-lift rounded-xl border border-white/15 bg-slate-950/35 p-4">
               <h3 className="mb-2 text-sm font-semibold">
                 What you can do now
               </h3>
@@ -419,7 +436,7 @@ export function IntakeWizard() {
                 ))}
               </ul>
             </article>
-            <article className="rounded-xl border border-white/15 bg-slate-950/35 p-4">
+            <article className="micro-lift rounded-xl border border-white/15 bg-slate-950/35 p-4">
               <h3 className="mb-2 text-sm font-semibold">When to seek help</h3>
               <ul className="space-y-1 text-xs text-cyan-50/80">
                 {triage.whenToSeekHelp.map((step) => (
@@ -427,7 +444,7 @@ export function IntakeWizard() {
                 ))}
               </ul>
             </article>
-            <article className="rounded-xl border border-white/15 bg-slate-950/35 p-4">
+            <article className="micro-lift rounded-xl border border-white/15 bg-slate-950/35 p-4">
               <h3 className="mb-2 text-sm font-semibold">Tell the doctor</h3>
               <ul className="space-y-1 text-xs text-cyan-50/80">
                 {triage.whatToTellDoctor.map((step) => (
@@ -439,19 +456,20 @@ export function IntakeWizard() {
 
           {triage.triageLevel === "red" && (
             <div className="mt-5 rounded-xl border border-red-200/40 bg-red-950/45 p-4">
-              <p className="text-sm font-semibold text-red-100">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-red-100">
+                <AlertIcon className="h-4 w-4" />
                 Emergency signals detected. Call local emergency services now.
               </p>
               <div className="mt-3 flex flex-wrap gap-3">
                 <a
                   href="tel:112"
-                  className="rounded-full bg-red-300 px-4 py-2 text-sm font-semibold text-red-950 hover:bg-red-200"
+                  className="micro-lift rounded-full bg-red-300 px-4 py-2 text-sm font-semibold text-red-950 soft-focus-ring hover:bg-red-200"
                 >
                   Call ambulance
                 </a>
                 <a
                   href="tel:108"
-                  className="rounded-full border border-red-200/50 px-4 py-2 text-sm"
+                  className="micro-lift rounded-full border border-red-200/50 px-4 py-2 text-sm soft-focus-ring"
                 >
                   Alternate emergency line
                 </a>
@@ -465,15 +483,17 @@ export function IntakeWizard() {
               onClick={() =>
                 router.push(`/chat?conversationId=${conversationId}`)
               }
-              className="rounded-full bg-cyan-300 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200"
+              className="micro-lift inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-5 py-2 text-sm font-semibold text-slate-950 soft-focus-ring hover:bg-cyan-200"
             >
+              <ChatIcon className="h-4 w-4" />
               Continue to chat
             </button>
             <button
               type="button"
               onClick={() => router.push("/hospitals")}
-              className="rounded-full border border-cyan-100/40 px-5 py-2 text-sm"
+              className="micro-lift inline-flex items-center gap-1.5 rounded-full border border-cyan-100/40 px-5 py-2 text-sm soft-focus-ring"
             >
+              <HospitalIcon className="h-4 w-4" />
               Find nearby hospitals
             </button>
             <button
@@ -491,8 +511,9 @@ export function IntakeWizard() {
                 setLocationStatus("");
                 setStep(0);
               }}
-              className="rounded-full border border-white/20 px-5 py-2 text-sm"
+              className="micro-lift inline-flex items-center gap-1.5 rounded-full border border-white/20 px-5 py-2 text-sm soft-focus-ring"
             >
+              <RefreshIcon className="h-4 w-4" />
               Start new intake
             </button>
           </div>
@@ -508,7 +529,8 @@ export function IntakeWizard() {
       <header className="card-glass rounded-3xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs tracking-wider text-cyan-100/70 uppercase">
+            <p className="inline-flex items-center gap-1.5 text-xs tracking-wider text-cyan-100/70 uppercase">
+              <SparklesIcon className="h-3.5 w-3.5" />
               Triage-first intake
             </p>
             <h1 className="mt-1 text-2xl font-semibold">
@@ -518,8 +540,9 @@ export function IntakeWizard() {
           <button
             type="button"
             onClick={loadDemoPatient}
-            className="rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-semibold text-emerald-100 hover:border-emerald-200"
+            className="micro-lift inline-flex items-center gap-1.5 rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-semibold text-emerald-100 soft-focus-ring hover:border-emerald-200"
           >
+            <IntakeIcon className="h-3.5 w-3.5" />
             Load demo patient
           </button>
         </div>
@@ -527,7 +550,7 @@ export function IntakeWizard() {
           {[0, 1, 2, 3, 4].map((index) => (
             <span
               key={index}
-              className={`h-1.5 rounded-full ${index <= step ? "bg-cyan-300" : "bg-white/10"}`}
+              className={`h-1.5 rounded-full transition-colors ${index <= step ? "bg-cyan-300" : "bg-white/10"}`}
             />
           ))}
         </div>
@@ -542,7 +565,7 @@ export function IntakeWizard() {
                 type="number"
                 min={0}
                 max={120}
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.demographics.age ?? ""}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -561,7 +584,7 @@ export function IntakeWizard() {
             <label className="text-sm">
               Sex at birth
               <select
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.demographics.sexAtBirth}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -584,7 +607,7 @@ export function IntakeWizard() {
             <label className="text-sm sm:col-span-2">
               Location (village/town/city)
               <input
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.demographics.locationText}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -599,12 +622,21 @@ export function IntakeWizard() {
               <button
                 type="button"
                 onClick={useMyLocation}
-                className="mt-2 rounded-full border border-cyan-200/40 px-3 py-1 text-xs"
+                disabled={detectingLocation}
+                className="micro-lift mt-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-200/40 px-3 py-1 text-xs soft-focus-ring disabled:opacity-70"
               >
+                {detectingLocation ? (
+                  <SpinnerIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <LocationIcon className="h-3.5 w-3.5" />
+                )}
                 Use browser geolocation
               </button>
               {locationStatus && (
-                <p className="mt-2 text-xs text-cyan-100/80">
+                <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-cyan-100/80">
+                  {detectingLocation && (
+                    <span className="tiny-spinner h-3 w-3" />
+                  )}
                   {locationStatus}
                 </p>
               )}
@@ -613,7 +645,7 @@ export function IntakeWizard() {
             <label className="text-sm sm:col-span-2">
               Pregnancy possible?
               <select
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={
                   intake.demographics.pregnancyPossible === null
                     ? "unknown"
@@ -647,14 +679,14 @@ export function IntakeWizard() {
             {intake.symptoms.map((symptom, index) => (
               <article
                 key={symptomUiKeys[index] ?? `symptom-${index}`}
-                className="rounded-2xl border border-white/15 p-4"
+                className="micro-lift rounded-2xl border border-white/15 bg-slate-950/25 p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-sm font-semibold">Symptom {index + 1}</p>
                   <button
                     type="button"
                     onClick={() => removeSymptom(index)}
-                    className="text-xs text-red-200/90"
+                    className="text-xs text-red-200/90 soft-focus-ring"
                   >
                     Remove
                   </button>
@@ -662,7 +694,7 @@ export function IntakeWizard() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <input
                     placeholder="Symptom name (e.g. fever)"
-                    className="rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2 text-sm"
+                    className="rounded-xl surface-input px-3 py-2 text-sm soft-focus-ring"
                     value={symptom.name}
                     onChange={(event) =>
                       setSymptom(index, { name: event.target.value })
@@ -670,7 +702,7 @@ export function IntakeWizard() {
                   />
                   <input
                     placeholder="Onset (e.g. 2 days ago)"
-                    className="rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2 text-sm"
+                    className="rounded-xl surface-input px-3 py-2 text-sm soft-focus-ring"
                     value={symptom.onset}
                     onChange={(event) =>
                       setSymptom(index, { onset: event.target.value })
@@ -678,14 +710,14 @@ export function IntakeWizard() {
                   />
                   <input
                     placeholder="Duration (constant/intermittent)"
-                    className="rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2 text-sm"
+                    className="rounded-xl surface-input px-3 py-2 text-sm soft-focus-ring"
                     value={symptom.duration}
                     onChange={(event) =>
                       setSymptom(index, { duration: event.target.value })
                     }
                   />
                   <select
-                    className="rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2 text-sm"
+                    className="rounded-xl surface-input px-3 py-2 text-sm soft-focus-ring"
                     value={symptom.progression}
                     onChange={(event) =>
                       setSymptom(index, {
@@ -720,7 +752,7 @@ export function IntakeWizard() {
             <button
               type="button"
               onClick={addSymptom}
-              className="rounded-full border border-cyan-200/35 px-4 py-2 text-xs"
+              className="micro-lift rounded-full border border-cyan-200/35 px-4 py-2 text-xs soft-focus-ring"
             >
               Add another symptom
             </button>
@@ -740,7 +772,7 @@ export function IntakeWizard() {
                     key={flag}
                     type="button"
                     onClick={() => toggleRedFlag(flag)}
-                    className={`rounded-xl border p-3 text-left text-sm transition ${selected ? "border-red-200/60 bg-red-900/35" : "border-white/15 hover:border-white/35"}`}
+                    className={`micro-lift rounded-xl border p-3 text-left text-sm transition soft-focus-ring ${selected ? "border-red-200/60 bg-red-900/35" : "border-white/15 hover:border-white/35"}`}
                   >
                     {flag}
                   </button>
@@ -755,7 +787,7 @@ export function IntakeWizard() {
             <label className="text-sm sm:col-span-2">
               Existing conditions (comma separated)
               <input
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={existingConditions}
                 onChange={(event) => setExistingConditions(event.target.value)}
               />
@@ -763,7 +795,7 @@ export function IntakeWizard() {
             <label className="text-sm sm:col-span-2">
               Medications already taken
               <input
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={medications}
                 onChange={(event) => setMedications(event.target.value)}
               />
@@ -771,7 +803,7 @@ export function IntakeWizard() {
             <label className="text-sm sm:col-span-2">
               Allergies
               <input
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={allergies}
                 onChange={(event) => setAllergies(event.target.value)}
               />
@@ -782,7 +814,7 @@ export function IntakeWizard() {
               <input
                 type="number"
                 step="0.1"
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.vitals.temperatureC ?? ""}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -801,7 +833,7 @@ export function IntakeWizard() {
               Pulse (bpm)
               <input
                 type="number"
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.vitals.pulseBpm ?? ""}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -820,7 +852,7 @@ export function IntakeWizard() {
               SpO2 (%)
               <input
                 type="number"
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.vitals.spo2 ?? ""}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -841,7 +873,7 @@ export function IntakeWizard() {
                 <input
                   type="number"
                   placeholder="Systolic"
-                  className="rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                  className="rounded-xl surface-input px-3 py-2 soft-focus-ring"
                   value={intake.vitals.bpSystolic ?? ""}
                   onChange={(event) =>
                     setIntake((previous) => ({
@@ -858,7 +890,7 @@ export function IntakeWizard() {
                 <input
                   type="number"
                   placeholder="Diastolic"
-                  className="rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                  className="rounded-xl surface-input px-3 py-2 soft-focus-ring"
                   value={intake.vitals.bpDiastolic ?? ""}
                   onChange={(event) =>
                     setIntake((previous) => ({
@@ -879,7 +911,7 @@ export function IntakeWizard() {
               Additional notes
               <textarea
                 rows={3}
-                className="mt-1 w-full rounded-xl border border-white/20 bg-slate-900/50 px-3 py-2"
+                className={inputClass}
                 value={intake.additionalNotes}
                 onChange={(event) =>
                   setIntake((previous) => ({
@@ -898,7 +930,7 @@ export function IntakeWizard() {
               You are about to run triage with the entered details. MaxWell will
               classify urgency and provide immediate next actions.
             </p>
-            <article className="rounded-2xl border border-white/15 p-4">
+            <article className="rounded-2xl border border-white/15 bg-slate-950/25 p-4">
               <p>
                 <strong>Location:</strong>{" "}
                 {intake.demographics.locationText || "Not set"}
@@ -930,7 +962,7 @@ export function IntakeWizard() {
           type="button"
           onClick={() => setStep((current) => Math.max(0, current - 1))}
           disabled={step === 0 || loading}
-          className="rounded-full border border-white/25 px-4 py-2 text-sm disabled:opacity-50"
+          className="micro-lift rounded-full border border-white/25 px-4 py-2 text-sm soft-focus-ring disabled:opacity-50"
         >
           Back
         </button>
@@ -939,7 +971,7 @@ export function IntakeWizard() {
           <button
             type="button"
             onClick={() => setStep((current) => Math.min(4, current + 1))}
-            className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200"
+            className="micro-lift rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 soft-focus-ring hover:bg-cyan-200"
           >
             Next
           </button>
@@ -948,8 +980,9 @@ export function IntakeWizard() {
             type="button"
             onClick={submitIntake}
             disabled={loading}
-            className="rounded-full bg-emerald-300 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-200 disabled:opacity-70"
+            className="micro-lift inline-flex items-center gap-2 rounded-full bg-emerald-300 px-5 py-2 text-sm font-semibold text-slate-950 soft-focus-ring hover:bg-emerald-200 disabled:opacity-70"
           >
+            {loading && <SpinnerIcon className="h-4 w-4" />}
             {loading ? "Generating triage..." : "Submit and run triage"}
           </button>
         )}

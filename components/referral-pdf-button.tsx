@@ -1,6 +1,7 @@
 "use client";
 
 import { jsPDF } from "jspdf";
+import { DownloadIcon } from "@/components/ui-icons";
 import type { ReferralNote } from "@/lib/types";
 
 function lines(label: string, values: string[]) {
@@ -61,8 +62,9 @@ export function ReferralPdfButton({
     <button
       type="button"
       onClick={handleExport}
-      className="rounded-full border border-cyan-200/35 px-3 py-1.5 text-xs font-medium text-cyan-100 hover:border-cyan-100/60"
+      className="micro-lift inline-flex items-center gap-1.5 rounded-full border border-cyan-200/35 px-3 py-1.5 text-xs font-medium text-cyan-100 soft-focus-ring hover:border-cyan-100/60"
     >
+      <DownloadIcon className="h-3.5 w-3.5" />
       Export PDF
     </button>
   );

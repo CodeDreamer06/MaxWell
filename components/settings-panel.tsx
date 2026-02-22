@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CheckIcon, SettingsIcon, SpinnerIcon } from "@/components/ui-icons";
 import type { MemorySnapshot } from "@/lib/types";
 
 function listToCsv(values: string[]) {
@@ -26,6 +27,8 @@ export function SettingsPanel() {
   const [medications, setMedications] = useState("");
   const [events, setEvents] = useState("");
   const [location, setLocation] = useState("");
+  const inputClass =
+    "mt-1 w-full rounded-xl surface-input px-3 py-2 soft-focus-ring";
 
   const loadMemory = useCallback(async () => {
     setLoading(true);
@@ -86,13 +89,21 @@ export function SettingsPanel() {
   }
 
   if (loading) {
-    return <p className="text-sm text-cyan-50/75">Loading memory...</p>;
+    return (
+      <div className="card-glass inline-flex items-center gap-2 rounded-2xl p-4 text-sm text-cyan-50/75">
+        <SpinnerIcon className="h-4 w-4" />
+        Loading memory...
+      </div>
+    );
   }
 
   return (
     <section className="space-y-4">
       <header className="card-glass rounded-3xl p-6">
-        <h1 className="text-2xl font-semibold">Settings & Memory Review</h1>
+        <h1 className="inline-flex items-center gap-2 text-2xl font-semibold">
+          <SettingsIcon className="h-6 w-6 text-cyan-200" />
+          Settings & Memory Review
+        </h1>
         <p className="mt-2 text-sm text-cyan-50/70">
           Review what MaxWell remembers and correct any details. This helps
           avoid incorrect context.
@@ -106,7 +117,7 @@ export function SettingsPanel() {
             <input
               value={location}
               onChange={(event) => setLocation(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/20 bg-slate-950/55 px-3 py-2"
+              className={inputClass}
             />
           </label>
 
@@ -115,7 +126,7 @@ export function SettingsPanel() {
             <input
               value={conditions}
               onChange={(event) => setConditions(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/20 bg-slate-950/55 px-3 py-2"
+              className={inputClass}
             />
           </label>
 
@@ -124,7 +135,7 @@ export function SettingsPanel() {
             <input
               value={allergies}
               onChange={(event) => setAllergies(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/20 bg-slate-950/55 px-3 py-2"
+              className={inputClass}
             />
           </label>
 
@@ -133,7 +144,7 @@ export function SettingsPanel() {
             <input
               value={medications}
               onChange={(event) => setMedications(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/20 bg-slate-950/55 px-3 py-2"
+              className={inputClass}
             />
           </label>
 
@@ -143,7 +154,7 @@ export function SettingsPanel() {
               rows={4}
               value={events}
               onChange={(event) => setEvents(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/20 bg-slate-950/55 px-3 py-2"
+              className={inputClass}
             />
           </label>
         </div>
@@ -153,8 +164,13 @@ export function SettingsPanel() {
             type="button"
             onClick={saveChanges}
             disabled={saving}
-            className="rounded-full bg-cyan-300 px-5 py-2 text-sm font-semibold text-slate-950 disabled:opacity-70"
+            className="micro-lift inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-5 py-2 text-sm font-semibold text-slate-950 soft-focus-ring disabled:opacity-70"
           >
+            {saving ? (
+              <SpinnerIcon className="h-4 w-4" />
+            ) : (
+              <CheckIcon className="h-4 w-4" />
+            )}
             {saving ? "Saving..." : "Save memory"}
           </button>
         </div>
@@ -164,7 +180,7 @@ export function SettingsPanel() {
       </div>
 
       {memory && (
-        <article className="card-glass rounded-3xl p-6 text-sm text-cyan-50/85">
+        <article className="card-glass micro-lift rounded-3xl p-6 text-sm text-cyan-50/85">
           <h2 className="mb-2 text-lg font-semibold">
             Current memory snapshot
           </h2>

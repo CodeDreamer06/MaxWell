@@ -7,6 +7,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
 import { TriageBadge } from "@/components/triage-badge";
+import {
+  AttachmentIcon,
+  ChatIcon,
+  CopyIcon,
+  HospitalIcon,
+  ReferralIcon,
+  RefreshIcon,
+  SendIcon,
+  SpinnerIcon,
+  StarIcon,
+} from "@/components/ui-icons";
 import type {
   AttachmentInput,
   ChatMessageRecord,
@@ -365,21 +376,30 @@ export function ChatInterface() {
   }
 
   if (loadingHistory) {
-    return <p className="text-sm text-cyan-50/80">Loading chat...</p>;
+    return (
+      <div className="card-glass flex items-center gap-2 rounded-2xl p-4 text-sm text-cyan-50/80">
+        <SpinnerIcon className="h-4 w-4" />
+        Loading chat...
+      </div>
+    );
   }
 
   if (!conversationId) {
     return (
       <section className="card-glass rounded-3xl p-6">
-        <h1 className="text-2xl font-semibold">No intake found yet</h1>
+        <h1 className="inline-flex items-center gap-2 text-2xl font-semibold">
+          <ChatIcon className="h-6 w-6 text-cyan-200" />
+          No intake found yet
+        </h1>
         <p className="mt-2 text-sm text-cyan-50/75">
           Complete triage intake first so MaxWell can provide context-aware
           help.
         </p>
         <Link
           href="/intake"
-          className="mt-5 inline-flex rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950"
+          className="micro-lift mt-5 inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 soft-focus-ring"
         >
+          <ChatIcon className="h-4 w-4" />
           Start intake
         </Link>
       </section>
@@ -391,7 +411,10 @@ export function ChatInterface() {
       <div className="card-glass flex min-h-[70vh] flex-col rounded-3xl p-4 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div>
-            <h1 className="text-xl font-semibold">Care Assistant Chat</h1>
+            <h1 className="inline-flex items-center gap-1.5 text-xl font-semibold">
+              <ChatIcon className="h-5 w-5 text-cyan-200" />
+              Care Assistant Chat
+            </h1>
             <p className="text-xs text-cyan-50/70">
               Conversation ID: {conversationId}
             </p>
@@ -405,7 +428,7 @@ export function ChatInterface() {
           {messages.map((message, index) => (
             <article
               key={message.id}
-              className={`rounded-2xl border p-3 text-sm ${message.role === "assistant" ? "border-cyan-200/20 bg-cyan-200/5" : "border-white/10 bg-slate-900/50"}`}
+              className={`micro-lift rounded-2xl border p-3 text-sm ${message.role === "assistant" ? "border-cyan-200/20 bg-cyan-200/5" : "border-white/10 bg-slate-900/50"}`}
             >
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs tracking-wide text-cyan-50/60 uppercase">
@@ -418,33 +441,43 @@ export function ChatInterface() {
               <div className="break-words">
                 <MarkdownMessage
                   content={
-                    message.content || (message.pending ? "Thinking..." : "")
+                    message.content ||
+                    (message.pending ? "Thinking through your case..." : "")
                   }
                 />
+                {message.pending && (
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs text-cyan-100/70">
+                    <SpinnerIcon className="h-3.5 w-3.5" />
+                    Generating response
+                  </p>
+                )}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => navigator.clipboard.writeText(message.content)}
-                  className="rounded-full border border-white/20 px-3 py-1"
+                  className="micro-lift inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 soft-focus-ring"
                 >
+                  <CopyIcon className="h-3.5 w-3.5" />
                   Copy
                 </button>
                 {message.role === "assistant" && (
                   <button
                     type="button"
                     onClick={() => regenerateNear(index)}
-                    className="rounded-full border border-cyan-200/35 px-3 py-1"
+                    className="micro-lift inline-flex items-center gap-1 rounded-full border border-cyan-200/35 px-3 py-1 soft-focus-ring"
                   >
+                    <RefreshIcon className="h-3.5 w-3.5" />
                     Regenerate
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => toggleImportant(message)}
-                  className={`rounded-full border px-3 py-1 ${message.isImportant ? "border-yellow-200/70 bg-yellow-200/20" : "border-white/20"}`}
+                  className={`micro-lift inline-flex items-center gap-1 rounded-full border px-3 py-1 soft-focus-ring ${message.isImportant ? "border-yellow-200/70 bg-yellow-200/20" : "border-white/20"}`}
                 >
+                  <StarIcon className="h-3.5 w-3.5" />
                   {message.isImportant ? "Important" : "Mark important"}
                 </button>
               </div>
@@ -459,7 +492,7 @@ export function ChatInterface() {
                 key={question}
                 type="button"
                 onClick={() => setInput(question)}
-                className="rounded-full border border-cyan-200/35 px-3 py-1 text-xs text-cyan-100/90"
+                className="micro-lift rounded-full border border-cyan-200/35 px-3 py-1 text-xs text-cyan-100/90 soft-focus-ring"
               >
                 {question}
               </button>
@@ -471,11 +504,12 @@ export function ChatInterface() {
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Describe what is happening now, or ask a follow-up..."
-            className="w-full rounded-2xl border border-white/20 bg-slate-950/55 px-4 py-3 text-sm"
+            className="w-full rounded-2xl surface-input px-4 py-3 text-sm soft-focus-ring"
           />
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <label className="rounded-full border border-white/25 px-3 py-1 text-xs">
+            <label className="micro-lift inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/25 px-3 py-1 text-xs soft-focus-ring">
+              <AttachmentIcon className="h-3.5 w-3.5" />
               Attach image/PDF
               <input
                 type="file"
@@ -497,8 +531,13 @@ export function ChatInterface() {
               type="button"
               onClick={() => sendMessage()}
               disabled={sending || !input.trim()}
-              className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
+              className="micro-lift inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 soft-focus-ring disabled:opacity-60"
             >
+              {sending ? (
+                <SpinnerIcon className="h-4 w-4" />
+              ) : (
+                <SendIcon className="h-4 w-4" />
+              )}
               {sending ? "Sending..." : "Send"}
             </button>
           </div>
@@ -512,26 +551,28 @@ export function ChatInterface() {
           <div className="mt-3 space-y-2 text-sm">
             <a
               href="tel:112"
-              className="block rounded-xl border border-red-200/45 bg-red-900/30 px-3 py-2"
+              className="micro-lift block rounded-xl border border-red-200/45 bg-red-900/30 px-3 py-2 soft-focus-ring"
             >
               Call ambulance
             </a>
             <a
               href="tel:108"
-              className="block rounded-xl border border-orange-200/45 bg-orange-900/20 px-3 py-2"
+              className="micro-lift block rounded-xl border border-orange-200/45 bg-orange-900/20 px-3 py-2 soft-focus-ring"
             >
               Call local health support
             </a>
             <Link
               href="/hospitals"
-              className="block rounded-xl border border-cyan-200/45 bg-cyan-900/20 px-3 py-2"
+              className="micro-lift inline-flex w-full items-center gap-1.5 rounded-xl border border-cyan-200/45 bg-cyan-900/20 px-3 py-2 soft-focus-ring"
             >
+              <HospitalIcon className="h-4 w-4" />
               Find nearby hospitals
             </Link>
             <Link
               href="/referrals"
-              className="block rounded-xl border border-emerald-200/45 bg-emerald-900/20 px-3 py-2"
+              className="micro-lift inline-flex w-full items-center gap-1.5 rounded-xl border border-emerald-200/45 bg-emerald-900/20 px-3 py-2 soft-focus-ring"
             >
+              <ReferralIcon className="h-4 w-4" />
               Generate referral note
             </Link>
           </div>
