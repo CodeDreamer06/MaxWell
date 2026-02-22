@@ -1,10 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HospitalMap } from "@/components/hospital-map";
 import type { HospitalResult } from "@/lib/types";
 
-const mapToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
+const HospitalMap = dynamic(
+  () =>
+    import("@/components/hospital-map").then((module) => module.HospitalMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[440px] items-center justify-center rounded-2xl border border-dashed border-white/25 text-sm text-cyan-50/70">
+        Loading map...
+      </div>
+    ),
+  },
+);
 
 export function HospitalsPanel() {
   const [query, setQuery] = useState("");
@@ -187,17 +198,7 @@ export function HospitalsPanel() {
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="card-glass rounded-3xl p-3">
-          {mapToken ? (
-            <HospitalMap
-              token={mapToken}
-              center={center}
-              hospitals={hospitals}
-            />
-          ) : (
-            <div className="flex h-[440px] items-center justify-center rounded-2xl border border-dashed border-white/25 text-sm text-cyan-50/70">
-              Map unavailable. Set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN.
-            </div>
-          )}
+          <HospitalMap center={center} hospitals={hospitals} />
         </div>
 
         <div className="card-glass rounded-3xl p-4">

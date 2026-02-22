@@ -1,62 +1,99 @@
 "use client";
 
-import mapboxgl from "mapbox-gl";
-import { useEffect, useRef } from "react";
+import { LatLngBounds } from "leaflet";
+import { useEffect } from "react";
+import {
+  CircleMarker,
+  MapContainer,
+  Popup,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
 import type { HospitalResult } from "@/lib/types";
 
 interface HospitalMapProps {
-  token: string;
   center: { latitude: number; longitude: number } | null;
   hospitals: HospitalResult[];
 }
 
-export function HospitalMap({ token, center, hospitals }: HospitalMapProps) {
-  const mapRef = useRef<HTMLDivElement | null>(null);
+interface MapViewportProps {
+  center: { latitude: number; longitude: number } | null;
+  hospitals: HospitalResult[];
+}
 
+function MapViewport({ center, hospitals }: MapViewportProps) {
+  const map = useMap();
   useEffect(() => {
-    if (!token || !mapRef.current) {
+    if (center) {
+      map.setView([center.latitude, center.longitude], 12);
       return;
     }
 
-    mapboxgl.accessToken = token;
-
-    const focus = center
-      ? [center.longitude, center.latitude]
-      : hospitals.length
-        ? [hospitals[0].longitude, hospitals[0].latitude]
-        : [78.9629, 20.5937];
-
-    const map = new mapboxgl.Map({
-      container: mapRef.current,
-      style: "mapbox://styles/mapbox/navigation-night-v1",
-      center: focus as [number, number],
-      zoom: center ? 10 : 4,
-    });
-
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    if (center) {
-      new mapboxgl.Marker({ color: "#2dd4bf" })
-        .setLngLat([center.longitude, center.latitude])
-        .setPopup(new mapboxgl.Popup().setText("Your selected location"))
-        .addTo(map);
+    if (hospitals.length) {
+      const bounds = new LatLngBounds(
+        hospitals.map((hospital) => [hospital.latitude, hospital.longitude]),
+      );
+      map.fitBounds(bounds.pad(0.2));
+      return;
     }
 
-    for (const hospital of hospitals) {
-      new mapboxgl.Marker({ color: "#fda4af" })
-        .setLngLat([hospital.longitude, hospital.latitude])
-        .setPopup(
-          new mapboxgl.Popup().setHTML(
-            `<strong>${hospital.name}</strong><br/>${hospital.address}`,
-          ),
-        )
-        .addTo(map);
-    }
+    map.setView([20.5937, 78.9629], 5);
+  }, [center, hospitals, map]);
 
-    return () => {
-      map.remove();
-    };
-  }, [token, center, hospitals]);
+  return null;
+}
 
-  return <div ref={mapRef} className="h-[440px] w-full rounded-2xl" />;
+export function HospitalMap({ center, hospitals }: HospitalMapProps) {
+  const defaultCenter: [number, number] = center
+    ? [center.latitude, center.longitude]
+    : [20.5937, 78.9629];
+  const defaultZoom = center ? 11 : 5;
+
+  return (
+    <MapContainer
+      center={defaultCenter}
+      zoom={defaultZoom}
+      scrollWheelZoom
+      className="h-[440px] w-full rounded-2xl"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MapViewport center={center} hospitals={hospitals} />
+
+      {center ? (
+        <CircleMarker
+          center={[center.latitude, center.longitude]}
+          pathOptions={{
+            color: "#14b8a6",
+            fillColor: "#2dd4bf",
+            fillOpacity: 0.7,
+          }}
+          radius={10}
+        >
+          <Popup>Your selected location</Popup>
+        </CircleMarker>
+      ) : null}
+
+      {hospitals.map((hospital) => (
+        <CircleMarker
+          key={hospital.id}
+          center={[hospital.latitude, hospital.longitude]}
+          pathOptions={{
+            color: "#fb7185",
+            fillColor: "#fda4af",
+            fillOpacity: 0.65,
+          }}
+          radius={8}
+        >
+          <Popup>
+            <strong>{hospital.name}</strong>
+            <br />
+            {hospital.address}
+          </Popup>
+        </CircleMarker>
+      ))}
+    </MapContainer>
+  );
 }

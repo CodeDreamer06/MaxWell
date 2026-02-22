@@ -22,6 +22,10 @@ function createDefaultSymptom(): SymptomEntry {
   };
 }
 
+function createSymptomUiKey() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 const baseIntake: IntakePayload = {
   demographics: {
     age: null,
@@ -153,6 +157,9 @@ export function IntakeWizard() {
   const [existingConditions, setExistingConditions] = useState("");
   const [medications, setMedications] = useState("");
   const [allergies, setAllergies] = useState("");
+  const [symptomUiKeys, setSymptomUiKeys] = useState(() =>
+    baseIntake.symptoms.map(() => createSymptomUiKey()),
+  );
   const [intake, setIntake] = useState<IntakePayload>(() =>
     structuredClone(baseIntake),
   );
@@ -212,6 +219,7 @@ export function IntakeWizard() {
       ...previous,
       symptoms: [...previous.symptoms, createDefaultSymptom()],
     }));
+    setSymptomUiKeys((previous) => [...previous, createSymptomUiKey()]);
   }
 
   function removeSymptom(index: number) {
@@ -222,6 +230,11 @@ export function IntakeWizard() {
           ? previous.symptoms
           : previous.symptoms.filter((_, current) => current !== index),
     }));
+    setSymptomUiKeys((previous) =>
+      previous.length === 1
+        ? previous
+        : previous.filter((_, current) => current !== index),
+    );
   }
 
   function toggleRedFlag(flag: string) {
@@ -371,6 +384,7 @@ export function IntakeWizard() {
     setLocationStatus("Demo intake values loaded locally.");
     const demo = structuredClone(DEMO_INTAKE_TEMPLATE);
     setIntake(demo);
+    setSymptomUiKeys(demo.symptoms.map(() => createSymptomUiKey()));
     setExistingConditions(demo.history.existingConditions.join(", "));
     setMedications(demo.history.medicationsTaken.join(", "));
     setAllergies(demo.history.allergies.join(", "));
@@ -468,6 +482,9 @@ export function IntakeWizard() {
                 setTriage(null);
                 setConversationId("");
                 setIntake(structuredClone(baseIntake));
+                setSymptomUiKeys(
+                  baseIntake.symptoms.map(() => createSymptomUiKey()),
+                );
                 setExistingConditions("");
                 setMedications("");
                 setAllergies("");
@@ -629,7 +646,7 @@ export function IntakeWizard() {
           <div className="space-y-4">
             {intake.symptoms.map((symptom, index) => (
               <article
-                key={`${index}-${symptom.name}`}
+                key={symptomUiKeys[index] ?? `symptom-${index}`}
                 className="rounded-2xl border border-white/15 p-4"
               >
                 <div className="mb-3 flex items-center justify-between">

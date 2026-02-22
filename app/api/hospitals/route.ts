@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
 import { getLatestMemorySnapshot } from "@/lib/db";
-import { getServerEnv } from "@/lib/env";
 import {
   geocodeLocation,
   searchNearbyHospitals,
@@ -10,14 +9,6 @@ export async function GET(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const token = getServerEnv().MAPBOX_ACCESS_TOKEN;
-  if (!token) {
-    return Response.json(
-      { error: "MAPBOX_ACCESS_TOKEN is missing." },
-      { status: 503 },
-    );
   }
 
   const { searchParams } = new URL(request.url);
@@ -30,7 +21,7 @@ export async function GET(request: Request) {
 
   if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
     if (query) {
-      const geocoded = await geocodeLocation({ token, query });
+      const geocoded = await geocodeLocation({ query });
       if (geocoded) {
         latitude = geocoded.latitude;
         longitude = geocoded.longitude;
@@ -39,10 +30,7 @@ export async function GET(request: Request) {
       const memory = await getLatestMemorySnapshot(userId);
       const memoryLocation = memory?.snapshot.demographics.locationText;
       if (memoryLocation) {
-        const geocoded = await geocodeLocation({
-          token,
-          query: memoryLocation,
-        });
+        const geocoded = await geocodeLocation({ query: memoryLocation });
         if (geocoded) {
           latitude = geocoded.latitude;
           longitude = geocoded.longitude;
@@ -65,7 +53,6 @@ export async function GET(request: Request) {
 
   try {
     const hospitals = await searchNearbyHospitals({
-      token,
       latitude,
       longitude,
       limit: 10,

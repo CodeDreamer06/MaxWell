@@ -18,9 +18,10 @@ Implemented and working in code:
 - Clerk-protected routes with app shell
 - Intake wizard with triage result and emergency CTA
 - Streaming chat with copy/regenerate/important actions
+- Chat failure logging to terminal + non-empty fallback assistant responses
 - Attachments support (image + PDF text extraction)
 - Memory snapshot persistence and settings editor
-- Hospitals map/list via Mapbox API
+- Hospitals map/list via Leaflet + OpenStreetMap APIs
 - Referral note generation, history, and PDF export
 - Demo-mode seed flow
 - Local pre-coded demo intake loader (no demo API dependency in intake UI)
@@ -58,7 +59,7 @@ MaxWell is **triage-first**, not diagnosis-first.
 - Chat page with preloaded context from intake
 - Persistent triage badge in chat
 - Memory snapshot stored per user in Postgres
-- Hospitals lookup + map pins using Mapbox
+- Hospitals lookup + map pins using Leaflet
 - Referral note generation + list/history
 - Referral PDF export
 
@@ -120,8 +121,8 @@ MaxWell is **triage-first**, not diagnosis-first.
 - Structured JSON outputs validated with Zod
 
 ### Maps
-- Mapbox APIs for geocoding + nearby hospital search
-- Mapbox GL JS for interactive map visualization
+- Nominatim + Overpass APIs for geocoding/reverse geocoding + nearby hospital search
+- Leaflet + OpenStreetMap tiles for interactive map visualization
 
 ## 5) Data Model
 
@@ -243,7 +244,7 @@ Display concise medical disclaimer persistently in chat/intake results:
 - Memory-aware prompt context
 
 ### Milestone D: Hospitals + referrals
-- Mapbox hospital search + map pins
+- OpenStreetMap hospital search + Leaflet map pins
 - Referral note generation and storage
 - PDF export
 
@@ -274,7 +275,7 @@ Display concise medical disclaimer persistently in chat/intake results:
 - [x] Triage API with Zod validation
 - [x] Chat API with streaming
 - [x] Memory snapshot create/update API
-- [x] Hospitals API (Mapbox)
+- [x] Hospitals API (Nominatim + Overpass)
 - [x] Referrals generate/list API
 
 ### Platform
@@ -294,7 +295,6 @@ Display concise medical disclaimer persistently in chat/intake results:
 - Node.js 20+
 - npm
 - Clerk account
-- Mapbox account
 - Vercel project with Postgres integration
 
 ## Environment variables
@@ -304,9 +304,6 @@ Create `.env.local`:
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4o-mini
-
-MAPBOX_ACCESS_TOKEN=...
-NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=... # for map rendering in browser
 
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
 CLERK_SECRET_KEY=...
@@ -331,14 +328,17 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+`OPENAI_BASE_URL` must be the API root (for example `https://api.openai.com/v1`), not a full endpoint like `/chat/completions`.
+
 ## Clerk setup notes
 - Enable Email (or preferred auth) in Clerk dashboard
 - Set allowed redirect URLs for local + production
 - Ensure middleware protects all private routes
 
-## Mapbox setup notes
-- Use token with geocoding + styles permissions
-- Restrict token usage to your domain in production
+## OpenStreetMap setup notes
+- No map token is required for local development.
+- Geocoding uses Nominatim and nearby search uses Overpass; these services can rate-limit burst traffic.
+- For production, consider routing through your own proxy/caching layer for reliability.
 
 ## Database migration steps
 SQL files are in `db/migrations`.
@@ -356,7 +356,7 @@ psql "$POSTGRES_URL" -f db/migrations/0001_init.sql
 ## Deploy to Vercel
 - Import Git repo into Vercel
 - Set all env vars in Vercel project settings
-- Deploy; ensure Clerk and Mapbox callback origins include deployed domain
+- Deploy; ensure Clerk callback origins include deployed domain
 - Run migration SQL (`db/migrations/0001_init.sql`) against production Postgres before first demo
 
 ## 11) Testing Notes
@@ -381,7 +381,8 @@ psql "$POSTGRES_URL" -f db/migrations/0001_init.sql
 ## 12) Known Limitations (Current)
 
 - LLM outputs can vary; strict schema validation + fallback messaging is required.
-- Hospital contact/hours availability depends on Mapbox data quality in region.
+- Hospital contact/hours availability depends on OpenStreetMap data quality in region.
+- OpenStreetMap public APIs can rate-limit high-frequency traffic.
 - Not a medical device; guidance is informational and escalation-first.
 - Attachment parsing quality depends on input quality (photo clarity, PDF structure).
 - Referral PDF export currently uses text layout (no branded template yet).

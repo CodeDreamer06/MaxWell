@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
 import { TriageBadge } from "@/components/triage-badge";
 import type {
@@ -27,6 +29,97 @@ async function fileToDataUrl(file: File) {
     reader.onerror = () => reject(new Error("Failed to read attachment"));
     reader.readAsDataURL(file);
   });
+}
+
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ node: _node, ...props }) => (
+          <a
+            {...props}
+            target="_blank"
+            rel="noreferrer"
+            className="text-cyan-200 underline decoration-cyan-200/60 underline-offset-2 hover:text-cyan-100"
+          />
+        ),
+        blockquote: ({ node: _node, ...props }) => (
+          <blockquote
+            {...props}
+            className="border-l-2 border-cyan-200/50 pl-3 text-cyan-100/80 italic"
+          />
+        ),
+        code: ({ node: _node, ...props }) => (
+          <code
+            {...props}
+            className="rounded bg-slate-900/80 px-1.5 py-0.5 font-mono text-[0.9em] text-cyan-100"
+          />
+        ),
+        h1: ({ node: _node, ...props }) => (
+          <h1
+            {...props}
+            className="mt-3 mb-2 text-lg font-semibold text-cyan-50"
+          />
+        ),
+        h2: ({ node: _node, ...props }) => (
+          <h2
+            {...props}
+            className="mt-3 mb-2 text-base font-semibold text-cyan-50"
+          />
+        ),
+        h3: ({ node: _node, ...props }) => (
+          <h3
+            {...props}
+            className="mt-2 mb-1 text-sm font-semibold tracking-wide text-cyan-50"
+          />
+        ),
+        hr: ({ node: _node, ...props }) => (
+          <hr {...props} className="my-3 border-cyan-100/20" />
+        ),
+        li: ({ node: _node, ...props }) => (
+          <li {...props} className="my-1 ml-5 list-outside list-disc" />
+        ),
+        ol: ({ node: _node, ...props }) => (
+          <ol {...props} className="my-2 ml-5 list-outside list-decimal" />
+        ),
+        p: ({ node: _node, ...props }) => (
+          <p {...props} className="my-2 leading-relaxed text-cyan-50/90" />
+        ),
+        pre: ({ node: _node, ...props }) => (
+          <pre
+            {...props}
+            className="my-2 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs leading-relaxed"
+          />
+        ),
+        table: ({ node: _node, ...props }) => (
+          <div className="my-2 overflow-x-auto">
+            <table
+              {...props}
+              className="w-full border-collapse text-left text-xs"
+            />
+          </div>
+        ),
+        td: ({ node: _node, ...props }) => (
+          <td
+            {...props}
+            className="border border-white/10 px-2 py-1 align-top"
+          />
+        ),
+        th: ({ node: _node, ...props }) => (
+          <th
+            {...props}
+            className="border border-white/10 bg-cyan-200/10 px-2 py-1 font-semibold text-cyan-50"
+          />
+        ),
+        ul: ({ node: _node, ...props }) => (
+          <ul {...props} className="my-2 ml-5 list-outside list-disc" />
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 export function ChatInterface() {
@@ -175,6 +268,7 @@ export function ChatInterface() {
     const decoder = new TextDecoder();
     let buffer = "";
     let full = "";
+    let streamError = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -217,18 +311,25 @@ export function ChatInterface() {
         }
 
         if (packet.error) {
+          streamError = packet.error;
           setError(packet.error);
         }
       }
     }
 
+    const finalAssistantContent =
+      full.trim() || "I could not generate a response. Please retry.";
+
     setMessages((previous) =>
       previous.map((message) =>
         message.id === assistantPlaceholderId
-          ? { ...message, pending: false, content: full }
+          ? { ...message, pending: false, content: finalAssistantContent }
           : message,
       ),
     );
+    if (streamError && !full.trim()) {
+      setError(streamError);
+    }
     setSending(false);
   }
 
@@ -314,9 +415,13 @@ export function ChatInterface() {
                   {formatDateTime(message.createdAt)}
                 </p>
               </div>
-              <p className="whitespace-pre-wrap leading-relaxed text-cyan-50/90">
-                {message.content || (message.pending ? "Thinking..." : "")}
-              </p>
+              <div className="break-words">
+                <MarkdownMessage
+                  content={
+                    message.content || (message.pending ? "Thinking..." : "")
+                  }
+                />
+              </div>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <button

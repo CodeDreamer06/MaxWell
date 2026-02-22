@@ -21,107 +21,212 @@ function distanceKm(
   return earth * two;
 }
 
-interface MapboxFeature {
-  id: string;
-  text?: string;
-  place_name?: string;
-  center: [number, number];
-  properties?: {
-    tel?: string;
-    phone?: string;
-    website?: string;
-  };
+interface NominatimSearchResult {
+  place_id: number;
+  display_name?: string;
+  lat?: string;
+  lon?: string;
+  name?: string;
 }
 
-export async function geocodeLocation(args: { token: string; query: string }) {
-  const url = new URL(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(args.query)}.json`,
-  );
-  url.searchParams.set("access_token", args.token);
-  url.searchParams.set("limit", "1");
+interface NominatimReverseResult {
+  display_name?: string;
+  name?: string;
+}
 
-  const res = await fetch(url, { cache: "no-store" });
+interface OverpassElement {
+  type: "node" | "way" | "relation";
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: {
+    lat: number;
+    lon: number;
+  };
+  tags?: Record<string, string>;
+}
+
+const OSM_HEADERS = {
+  "User-Agent": "MaxWell/0.1 (healthcare-assistant)",
+  Accept: "application/json",
+};
+
+function sanitize(value: string) {
+  return value.replaceAll('"', "");
+}
+
+function extractCoordinates(element: OverpassElement) {
+  if (typeof element.lat === "number" && typeof element.lon === "number") {
+    return { latitude: element.lat, longitude: element.lon };
+  }
+  if (element.center) {
+    return { latitude: element.center.lat, longitude: element.center.lon };
+  }
+  return null;
+}
+
+function formatAddress(tags: Record<string, string> | undefined) {
+  if (!tags) {
+    return "Address unavailable";
+  }
+
+  const parts = [
+    tags["addr:full"],
+    tags["addr:housenumber"],
+    tags["addr:street"],
+    tags["addr:city"],
+    tags["addr:state"],
+    tags["addr:postcode"],
+    tags["addr:country"],
+  ]
+    .map((entry) => entry?.trim())
+    .filter(Boolean) as string[];
+
+  if (parts.length) {
+    return parts.join(", ");
+  }
+
+  return tags["name:en"] ?? tags.name ?? "Address unavailable";
+}
+
+export async function geocodeLocation(args: { query: string }) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("q", args.query);
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("addressdetails", "0");
+
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: OSM_HEADERS,
+  });
   if (!res.ok) {
     return null;
   }
 
-  const data = (await res.json()) as { features?: MapboxFeature[] };
-  const first = data.features?.[0];
+  const data = (await res.json()) as NominatimSearchResult[];
+  const first = data[0];
   if (!first) {
+    return null;
+  }
+
+  const latitude = Number(first.lat);
+  const longitude = Number(first.lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return null;
   }
 
   return {
-    latitude: first.center[1],
-    longitude: first.center[0],
-    placeName: first.place_name ?? args.query,
+    latitude,
+    longitude,
+    placeName: first.display_name ?? first.name ?? args.query,
   };
 }
 
 export async function reverseGeocodeCoordinates(args: {
-  token: string;
   latitude: number;
   longitude: number;
 }) {
-  const url = new URL(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${args.longitude},${args.latitude}.json`,
-  );
-  url.searchParams.set("access_token", args.token);
-  url.searchParams.set("limit", "1");
+  const url = new URL("https://nominatim.openstreetmap.org/reverse");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("lat", String(args.latitude));
+  url.searchParams.set("lon", String(args.longitude));
+  url.searchParams.set("zoom", "15");
+  url.searchParams.set("addressdetails", "0");
 
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: OSM_HEADERS,
+  });
   if (!res.ok) {
     return null;
   }
 
-  const data = (await res.json()) as { features?: MapboxFeature[] };
-  const first = data.features?.[0];
+  const data = (await res.json()) as NominatimReverseResult;
+  const first = data.display_name ?? data.name;
   if (!first) {
     return null;
   }
 
-  return first.place_name ?? first.text ?? null;
+  return first;
 }
 
 export async function searchNearbyHospitals(args: {
-  token: string;
   latitude: number;
   longitude: number;
   limit?: number;
 }) {
-  const url = new URL(
-    "https://api.mapbox.com/geocoding/v5/mapbox.places/hospital.json",
-  );
-  url.searchParams.set("access_token", args.token);
-  url.searchParams.set("proximity", `${args.longitude},${args.latitude}`);
-  url.searchParams.set("types", "poi");
-  url.searchParams.set("limit", String(args.limit ?? 8));
+  const radiusMeters = 25000;
+  const query = `
+[out:json][timeout:20];
+(
+  node["amenity"~"hospital|clinic"](around:${radiusMeters},${args.latitude},${args.longitude});
+  way["amenity"~"hospital|clinic"](around:${radiusMeters},${args.latitude},${args.longitude});
+  relation["amenity"~"hospital|clinic"](around:${radiusMeters},${args.latitude},${args.longitude});
+  node["healthcare"="hospital"](around:${radiusMeters},${args.latitude},${args.longitude});
+  way["healthcare"="hospital"](around:${radiusMeters},${args.latitude},${args.longitude});
+  relation["healthcare"="hospital"](around:${radiusMeters},${args.latitude},${args.longitude});
+);
+out center tags qt;
+`.trim();
 
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      ...OSM_HEADERS,
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    },
+    body: `data=${encodeURIComponent(query)}`,
+  });
   if (!response.ok) {
-    throw new Error(`Mapbox hospital query failed: ${response.status}`);
+    throw new Error(`Overpass hospital query failed: ${response.status}`);
   }
 
-  const data = (await response.json()) as { features?: MapboxFeature[] };
-  const facilities = (data.features ?? []).map<HospitalResult>((feature) => {
-    const [lng, lat] = feature.center;
-    return {
-      id: feature.id,
-      name: feature.text ?? "Hospital",
-      address: feature.place_name ?? "Address unavailable",
-      latitude: lat,
-      longitude: lng,
+  const data = (await response.json()) as { elements?: OverpassElement[] };
+  const byIdentity = new Map<string, HospitalResult>();
+
+  for (const element of data.elements ?? []) {
+    const coordinates = extractCoordinates(element);
+    if (!coordinates) {
+      continue;
+    }
+    const tags = element.tags ?? {};
+    const name =
+      tags["name:en"] ?? tags.name ?? tags.operator ?? tags.brand ?? "Hospital";
+    const identity = `${sanitize(name)}:${coordinates.latitude.toFixed(5)}:${coordinates.longitude.toFixed(5)}`;
+    if (byIdentity.has(identity)) {
+      continue;
+    }
+
+    byIdentity.set(identity, {
+      id: `${element.type}/${element.id}`,
+      name,
+      address: formatAddress(tags),
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
       distanceKm: Number(
         distanceKm(
           { lat: args.latitude, lng: args.longitude },
-          { lat, lng },
+          { lat: coordinates.latitude, lng: coordinates.longitude },
         ).toFixed(1),
       ),
-      phone: feature.properties?.tel ?? feature.properties?.phone ?? null,
-      website: feature.properties?.website ?? null,
-      openHours: null,
-    };
-  });
+      phone: tags.phone ?? tags["contact:phone"] ?? null,
+      website: tags.website ?? tags["contact:website"] ?? null,
+      openHours:
+        tags.opening_hours ??
+        tags.service_times ??
+        tags["opening_hours:covid19"] ??
+        null,
+    });
+  }
 
-  return facilities;
+  const limit = args.limit ?? 8;
+  return [...byIdentity.values()]
+    .sort(
+      (a, b) =>
+        (a.distanceKm ?? Number.POSITIVE_INFINITY) -
+        (b.distanceKm ?? Number.POSITIVE_INFINITY),
+    )
+    .slice(0, limit);
 }

@@ -192,6 +192,22 @@ export async function POST(request: Request) {
           }
         }
 
+        if (!assistantResponse.trim()) {
+          assistantResponse = "I could not generate a response. Please retry.";
+          console.error("[MaxWell][API][Chat] Empty assistant output", {
+            clerkUserId: userId,
+            conversationId: payload.conversationId,
+            hasLLMEnv: hasLLMEnv(),
+            model: getLLMModel(),
+            attachmentCount: payload.attachments.length,
+          });
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ token: assistantResponse })}\n\n`,
+            ),
+          );
+        }
+
         const suggestions = deriveSuggestedQuestions({
           memory: latestMemory?.snapshot ?? null,
           userPrompt: payload.content,
@@ -223,7 +239,25 @@ export async function POST(request: Request) {
           ),
         );
         controller.close();
-      } catch {
+      } catch (error) {
+        const fallbackResponse =
+          assistantResponse.trim() ||
+          "I could not generate a response. Please retry.";
+        console.error("[MaxWell][API][Chat] Assistant failed to respond", {
+          clerkUserId: userId,
+          conversationId: payload.conversationId,
+          hasLLMEnv: hasLLMEnv(),
+          model: getLLMModel(),
+          attachmentCount: payload.attachments.length,
+          error,
+        });
+        if (!assistantResponse.trim()) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ token: fallbackResponse })}\n\n`,
+            ),
+          );
+        }
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ error: "Assistant failed to respond." })}\n\n`,

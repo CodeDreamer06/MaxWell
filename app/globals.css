@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "mapbox-gl/dist/mapbox-gl.css";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --bg: #081018;
@@ -93,9 +93,9 @@ a {
   }
 }
 
-.mapboxgl-popup-content {
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
   background: #0f253a;
   color: #eef9ff;
   border: 1px solid #355c7f;
-  border-radius: 12px;
 }

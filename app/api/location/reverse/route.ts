@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-import { getServerEnv } from "@/lib/env";
 import { reverseGeocodeCoordinates } from "@/lib/services/hospitals";
 
 export async function GET(request: Request) {
@@ -16,15 +15,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Invalid coordinates" }, { status: 400 });
   }
 
-  const token = getServerEnv().MAPBOX_ACCESS_TOKEN;
-  if (!token) {
-    return Response.json({
-      placeName: `Approx. coordinates (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
-    });
-  }
-
   const placeName = await reverseGeocodeCoordinates({
-    token,
     latitude,
     longitude,
   });
