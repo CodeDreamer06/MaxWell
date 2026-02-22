@@ -1,19 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DisclaimerBanner } from "@/components/disclaimer-banner";
 import { TriageBadge } from "@/components/triage-badge";
-import { RED_FLAG_OPTIONS, TRIAGE_META } from "@/lib/constants";
+import {
+  DEMO_INTAKE_TEMPLATE,
+  RED_FLAG_OPTIONS,
+  TRIAGE_META,
+} from "@/lib/constants";
+import { IntakeSchema } from "@/lib/schemas";
 import type { IntakePayload, SymptomEntry, TriageResult } from "@/lib/types";
 
-const defaultSymptom: SymptomEntry = {
-  name: "",
-  onset: "",
-  duration: "",
-  severity: 5,
-  progression: "stable",
-};
+function createDefaultSymptom(): SymptomEntry {
+  return {
+    name: "",
+    onset: "",
+    duration: "",
+    severity: 5,
+    progression: "stable",
+  };
+}
 
 const baseIntake: IntakePayload = {
   demographics: {
@@ -24,7 +31,7 @@ const baseIntake: IntakePayload = {
     latitude: null,
     longitude: null,
   },
-  symptoms: [defaultSymptom],
+  symptoms: [createDefaultSymptom()],
   redFlags: [],
   history: {
     existingConditions: [],
@@ -48,22 +55,148 @@ function csvToList(value: string) {
     .filter(Boolean);
 }
 
+function safeNumber(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function summarizeIssues(
+  issues: Array<{ path: Array<PropertyKey>; message: string }>,
+) {
+  return issues
+    .map((issue) => {
+      const path = issue.path.length
+        ? issue.path.map((token) => String(token)).join(".")
+        : "form";
+      return `${path}: ${issue.message}`;
+    })
+    .join(" | ");
+}
+
+function buildPayload(
+  intake: IntakePayload,
+  fields: {
+    existingConditions: string;
+    medications: string;
+    allergies: string;
+  },
+): IntakePayload {
+  const normalizedSymptoms = intake.symptoms
+    .map((symptom) => ({
+      name: symptom.name.trim(),
+      onset: symptom.onset.trim() || "Not specified",
+      duration: symptom.duration.trim() || "Not specified",
+      severity:
+        typeof symptom.severity === "number" &&
+        Number.isFinite(symptom.severity)
+          ? symptom.severity
+          : 5,
+      progression: symptom.progression,
+    }))
+    .filter((symptom) => symptom.name.length > 0);
+
+  const latitude = safeNumber(intake.demographics.latitude);
+  const longitude = safeNumber(intake.demographics.longitude);
+  const locationText = intake.demographics.locationText.trim();
+
+  return {
+    ...intake,
+    demographics: {
+      ...intake.demographics,
+      age: safeNumber(intake.demographics.age),
+      locationText:
+        locationText ||
+        (latitude !== null && longitude !== null
+          ? `Approx. coordinates (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+          : ""),
+      latitude,
+      longitude,
+    },
+    symptoms: normalizedSymptoms,
+    history: {
+      existingConditions: csvToList(fields.existingConditions),
+      medicationsTaken: csvToList(fields.medications),
+      allergies: csvToList(fields.allergies),
+    },
+    vitals: {
+      temperatureC: safeNumber(intake.vitals.temperatureC),
+      pulseBpm: safeNumber(intake.vitals.pulseBpm),
+      spo2: safeNumber(intake.vitals.spo2),
+      bpSystolic: safeNumber(intake.vitals.bpSystolic),
+      bpDiastolic: safeNumber(intake.vitals.bpDiastolic),
+    },
+    additionalNotes: intake.additionalNotes.trim(),
+  };
+}
+
+async function reverseLookup(lat: number, lng: number) {
+  try {
+    const response = await fetch(`/api/location/reverse?lat=${lat}&lng=${lng}`);
+    if (!response.ok) {
+      return "";
+    }
+    const data = (await response.json()) as { placeName?: string };
+    return data.placeName?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function IntakeWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [locationStatus, setLocationStatus] = useState("");
+  const [autoGeoAttempted, setAutoGeoAttempted] = useState(false);
   const [triage, setTriage] = useState<TriageResult | null>(null);
   const [conversationId, setConversationId] = useState("");
   const [existingConditions, setExistingConditions] = useState("");
   const [medications, setMedications] = useState("");
   const [allergies, setAllergies] = useState("");
-  const [intake, setIntake] = useState<IntakePayload>(baseIntake);
+  const [intake, setIntake] = useState<IntakePayload>(() =>
+    structuredClone(baseIntake),
+  );
 
   const stepTitle = useMemo(
     () =>
       ["Basics", "Symptoms", "Red Flags", "History + Vitals", "Review"][step],
     [step],
+  );
+
+  const applyCoordinates = useCallback(
+    async (
+      latitude: number,
+      longitude: number,
+      source: "auto" | "manual",
+      fallback?: string,
+    ) => {
+      const roundedLat = Number(latitude.toFixed(6));
+      const roundedLng = Number(longitude.toFixed(6));
+      const resolvedName = await reverseLookup(roundedLat, roundedLng);
+      const nextLocationText =
+        resolvedName ||
+        fallback ||
+        `Approx. coordinates (${roundedLat.toFixed(4)}, ${roundedLng.toFixed(4)})`;
+
+      setIntake((previous) => ({
+        ...previous,
+        demographics: {
+          ...previous.demographics,
+          latitude: roundedLat,
+          longitude: roundedLng,
+          locationText: previous.demographics.locationText.trim()
+            ? previous.demographics.locationText
+            : nextLocationText,
+        },
+      }));
+
+      setLocationStatus(
+        source === "auto"
+          ? `Auto-detected location: ${nextLocationText}`
+          : `Location captured: ${nextLocationText}`,
+      );
+    },
+    [],
   );
 
   function setSymptom(index: number, next: Partial<SymptomEntry>) {
@@ -77,7 +210,7 @@ export function IntakeWizard() {
   function addSymptom() {
     setIntake((previous) => ({
       ...previous,
-      symptoms: [...previous.symptoms, defaultSymptom],
+      symptoms: [...previous.symptoms, createDefaultSymptom()],
     }));
   }
 
@@ -107,80 +240,141 @@ export function IntakeWizard() {
       return;
     }
 
+    setLocationStatus("Detecting your location...");
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setIntake((previous) => ({
-          ...previous,
-          demographics: {
-            ...previous.demographics,
-            latitude: Number(position.coords.latitude.toFixed(6)),
-            longitude: Number(position.coords.longitude.toFixed(6)),
-          },
-        }));
+      async (position) => {
+        await applyCoordinates(
+          position.coords.latitude,
+          position.coords.longitude,
+          "manual",
+        );
       },
-      () => {
+      (geoError) => {
+        console.error("[MaxWell][Intake] Geolocation failed", geoError);
         setError(
           "Could not fetch your location. You can continue with manual input.",
         );
       },
-      { enableHighAccuracy: true, timeout: 6000 },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 120000 },
     );
   }
+
+  useEffect(() => {
+    if (autoGeoAttempted) {
+      return;
+    }
+
+    setAutoGeoAttempted(true);
+    if (!navigator.geolocation) {
+      setLocationStatus(
+        "Automatic geolocation is not supported in this browser.",
+      );
+      return;
+    }
+
+    setLocationStatus("Attempting automatic location detection...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void applyCoordinates(
+          position.coords.latitude,
+          position.coords.longitude,
+          "auto",
+        );
+      },
+      () => {
+        setLocationStatus(
+          "Automatic location was blocked or unavailable. Use the manual location button.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 5500, maximumAge: 180000 },
+    );
+  }, [applyCoordinates, autoGeoAttempted]);
 
   async function submitIntake() {
     setError("");
     setLoading(true);
 
-    const payload: IntakePayload = {
-      ...intake,
-      symptoms: intake.symptoms.filter(
-        (symptom) => symptom.name.trim().length > 0,
-      ),
-      history: {
-        existingConditions: csvToList(existingConditions),
-        medicationsTaken: csvToList(medications),
-        allergies: csvToList(allergies),
-      },
-    };
-
-    if (!payload.symptoms.length) {
-      setError("Add at least one symptom before submitting.");
-      setLoading(false);
-      return;
-    }
-
-    const response = await fetch("/api/intake", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    const payload = buildPayload(intake, {
+      existingConditions,
+      medications,
+      allergies,
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error ?? "Unable to submit intake.");
+    const localValidation = IntakeSchema.safeParse(payload);
+    if (!localValidation.success) {
+      const issueSummary = summarizeIssues(localValidation.error.issues);
+      setError(`Please fix intake details before submit. ${issueSummary}`);
+      console.error("[MaxWell][Intake] Client validation failed", {
+        issues: localValidation.error.issues,
+        payload,
+      });
       setLoading(false);
       return;
     }
 
-    setTriage(data.triage);
-    setConversationId(data.conversationId);
-    setLoading(false);
+    try {
+      const response = await fetch("/api/intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        details?: unknown;
+        issues?: unknown;
+        triage?: TriageResult;
+        conversationId?: string;
+      };
+
+      if (!response.ok) {
+        const detailsText =
+          typeof data.details === "object" && data.details !== null
+            ? JSON.stringify(data.details)
+            : "";
+        setError(
+          data.error
+            ? `${data.error}${detailsText ? `: ${detailsText}` : ""}`
+            : "Unable to submit intake.",
+        );
+        console.error("[MaxWell][Intake] API rejected payload", {
+          status: response.status,
+          payload,
+          response: data,
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!data.triage || !data.conversationId) {
+        setError("Intake submitted but response was incomplete.");
+        console.error("[MaxWell][Intake] Unexpected success payload", data);
+        setLoading(false);
+        return;
+      }
+
+      setTriage(data.triage);
+      setConversationId(data.conversationId);
+    } catch (submitError) {
+      setError("Unable to submit intake due to network/server failure.");
+      console.error("[MaxWell][Intake] Submit failed unexpectedly", {
+        error: submitError,
+        payload,
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function runDemoMode() {
+  function loadDemoPatient() {
     setError("");
-    setLoading(true);
-    const response = await fetch("/api/demo-seed", { method: "POST" });
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error ?? "Unable to create demo case.");
-      setLoading(false);
-      return;
-    }
-
-    setTriage(data.triage);
-    setConversationId(data.conversationId);
-    setLoading(false);
+    setLocationStatus("Demo intake values loaded locally.");
+    const demo = structuredClone(DEMO_INTAKE_TEMPLATE);
+    setIntake(demo);
+    setExistingConditions(demo.history.existingConditions.join(", "));
+    setMedications(demo.history.medicationsTaken.join(", "));
+    setAllergies(demo.history.allergies.join(", "));
+    setStep(4);
   }
 
   if (triage && conversationId) {
@@ -273,6 +467,11 @@ export function IntakeWizard() {
               onClick={() => {
                 setTriage(null);
                 setConversationId("");
+                setIntake(structuredClone(baseIntake));
+                setExistingConditions("");
+                setMedications("");
+                setAllergies("");
+                setLocationStatus("");
                 setStep(0);
               }}
               className="rounded-full border border-white/20 px-5 py-2 text-sm"
@@ -301,7 +500,7 @@ export function IntakeWizard() {
           </div>
           <button
             type="button"
-            onClick={runDemoMode}
+            onClick={loadDemoPatient}
             className="rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-semibold text-emerald-100 hover:border-emerald-200"
           >
             Load demo patient
@@ -387,6 +586,11 @@ export function IntakeWizard() {
               >
                 Use browser geolocation
               </button>
+              {locationStatus && (
+                <p className="mt-2 text-xs text-cyan-100/80">
+                  {locationStatus}
+                </p>
+              )}
             </label>
 
             <label className="text-sm sm:col-span-2">

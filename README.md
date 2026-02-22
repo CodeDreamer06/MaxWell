@@ -23,6 +23,9 @@ Implemented and working in code:
 - Hospitals map/list via Mapbox API
 - Referral note generation, history, and PDF export
 - Demo-mode seed flow
+- Local pre-coded demo intake loader (no demo API dependency in intake UI)
+- Auto geolocation attempt on intake/hospitals pages with manual fallback
+- Intake payload normalization + client/server debug logging for validation failures
 - SQL migration file + runtime schema guard
 
 Validation status:

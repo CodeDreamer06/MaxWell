@@ -16,8 +16,16 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = IntakeSchema.safeParse(body);
   if (!parsed.success) {
+    console.error("[MaxWell][API][Intake] Invalid intake payload", {
+      issues: parsed.error.issues,
+      body,
+    });
     return Response.json(
-      { error: "Invalid intake payload", details: parsed.error.flatten() },
+      {
+        error: "Invalid intake payload",
+        details: parsed.error.flatten(),
+        issues: parsed.error.issues,
+      },
       { status: 400 },
     );
   }
@@ -54,7 +62,11 @@ export async function POST(request: Request) {
       intakeId: record.intakeId,
       triage,
     });
-  } catch {
+  } catch (error) {
+    console.error("[MaxWell][API][Intake] Failed to process intake", {
+      error,
+      payload: parsed.data,
+    });
     return Response.json(
       {
         error:

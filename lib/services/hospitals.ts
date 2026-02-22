@@ -58,6 +58,31 @@ export async function geocodeLocation(args: { token: string; query: string }) {
   };
 }
 
+export async function reverseGeocodeCoordinates(args: {
+  token: string;
+  latitude: number;
+  longitude: number;
+}) {
+  const url = new URL(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${args.longitude},${args.latitude}.json`,
+  );
+  url.searchParams.set("access_token", args.token);
+  url.searchParams.set("limit", "1");
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    return null;
+  }
+
+  const data = (await res.json()) as { features?: MapboxFeature[] };
+  const first = data.features?.[0];
+  if (!first) {
+    return null;
+  }
+
+  return first.place_name ?? first.text ?? null;
+}
+
 export async function searchNearbyHospitals(args: {
   token: string;
   latitude: number;

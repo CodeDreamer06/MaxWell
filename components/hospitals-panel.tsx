@@ -15,44 +15,49 @@ export function HospitalsPanel() {
   const [hospitals, setHospitals] = useState<HospitalResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [geoStatus, setGeoStatus] = useState("");
+  const [autoLocateAttempted, setAutoLocateAttempted] = useState(false);
 
   const hasHospitals = hospitals.length > 0;
 
   const searchByQuery = useCallback(async (nextQuery: string) => {
     setLoading(true);
     setError("");
+    try {
+      const response = await fetch(
+        `/api/hospitals?q=${encodeURIComponent(nextQuery.trim())}`,
+      );
+      const data = await response.json();
 
-    const response = await fetch(
-      `/api/hospitals?q=${encodeURIComponent(nextQuery.trim())}`,
-    );
-    const data = await response.json();
+      if (!response.ok) {
+        setError(data.error ?? "Unable to fetch hospitals.");
+        setHospitals([]);
+        setCenter(null);
+        setLoading(false);
+        return;
+      }
 
-    if (!response.ok) {
-      setError(data.error ?? "Unable to fetch hospitals.");
-      setHospitals([]);
-      setCenter(null);
+      setHospitals(data.hospitals ?? []);
+      setCenter(data.center ?? null);
+    } catch (requestError) {
+      setError("Unable to fetch hospitals right now.");
+      console.error("[MaxWell][Hospitals] Query search failed", {
+        query: nextQuery,
+        error: requestError,
+      });
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setHospitals(data.hospitals ?? []);
-    setCenter(data.center ?? null);
-    setLoading(false);
   }, []);
 
-  async function useMyLocation() {
-    if (!navigator.geolocation) {
-      setError("Geolocation is not available on this browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        setLoading(true);
-        setError("");
-        const lat = position.coords.latitude.toFixed(6);
-        const lng = position.coords.longitude.toFixed(6);
-        const response = await fetch(`/api/hospitals?lat=${lat}&lng=${lng}`);
+  const fetchByCoordinates = useCallback(
+    async (latitude: number, longitude: number) => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(
+          `/api/hospitals?lat=${latitude}&lng=${longitude}`,
+        );
         const data = await response.json();
 
         if (!response.ok) {
@@ -63,18 +68,71 @@ export function HospitalsPanel() {
 
         setHospitals(data.hospitals ?? []);
         setCenter(data.center ?? null);
+      } catch (requestError) {
+        setError("Unable to fetch hospitals right now.");
+        console.error("[MaxWell][Hospitals] Coordinate search failed", {
+          latitude,
+          longitude,
+          error: requestError,
+        });
+      } finally {
         setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const useMyLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not available on this browser.");
+      return;
+    }
+
+    setGeoStatus("Detecting current location...");
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        setGeoStatus(`Using detected location (${lat}, ${lng})`);
+        await fetchByCoordinates(Number(lat), Number(lng));
       },
-      () => {
+      (geoError) => {
+        console.error("[MaxWell][Hospitals] Geolocation failed", geoError);
+        setGeoStatus("Geolocation failed. Falling back to manual search.");
         setError("Unable to retrieve current location.");
       },
-      { enableHighAccuracy: true, timeout: 5000 },
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 120000 },
     );
-  }
+  }, [fetchByCoordinates]);
 
   useEffect(() => {
-    void searchByQuery("district hospital");
-  }, [searchByQuery]);
+    if (autoLocateAttempted) {
+      return;
+    }
+
+    setAutoLocateAttempted(true);
+    if (!navigator.geolocation) {
+      setGeoStatus("Auto geolocation is unavailable in this browser.");
+      void searchByQuery("district hospital");
+      return;
+    }
+
+    setGeoStatus("Attempting automatic location detection...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void fetchByCoordinates(
+          Number(position.coords.latitude.toFixed(6)),
+          Number(position.coords.longitude.toFixed(6)),
+        );
+        setGeoStatus("Using your detected location for hospital search.");
+      },
+      () => {
+        setGeoStatus("Auto geolocation unavailable. Using default search.");
+        void searchByQuery("district hospital");
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 180000 },
+    );
+  }, [autoLocateAttempted, fetchByCoordinates, searchByQuery]);
 
   const centerLabel = useMemo(() => {
     if (!center) {
@@ -113,6 +171,9 @@ export function HospitalsPanel() {
             Use my location
           </button>
         </div>
+        {geoStatus && (
+          <p className="mt-2 text-xs text-cyan-100/80">{geoStatus}</p>
+        )}
       </header>
 
       {loading && (
